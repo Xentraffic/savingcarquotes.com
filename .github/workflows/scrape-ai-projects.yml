@@ -1,0 +1,41 @@
+name: Scrape AI projects
+
+on:
+  schedule:
+    - cron: "0 6 * * *"  # daily 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scrape-ai-projects
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run scraper
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python xenhive/scrape_ai_projects.py
+
+      - name: Commit updated dataset
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- xenhive/ai-projects.json; then
+            echo "No changes."
+            exit 0
+          fi
+          git add xenhive/ai-projects.json
+          git commit -m "chore(xenhive): refresh ai-projects.json"
+          git push
