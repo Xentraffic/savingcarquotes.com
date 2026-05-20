@@ -21,6 +21,7 @@ from urllib.parse import quote_plus
 from urllib.request import Request, urlopen
 
 TOPICS = [
+    # Core AI / LLM / agents
     "ai",
     "artificial-intelligence",
     "llm",
@@ -29,6 +30,21 @@ TOPICS = [
     "deep-learning",
     "ai-agents",
     "agents",
+    # Tooling / infra
+    "rag",
+    "vector-database",
+    "llmops",
+    "mlops",
+    "prompt-engineering",
+    "fine-tuning",
+    "embeddings",
+    # Frameworks / domains
+    "chatbot",
+    "computer-vision",
+    "nlp",
+    "transformers",
+    "pytorch",
+    "tensorflow",
 ]
 MIN_STARS = 30000
 API = "https://api.github.com/search/repositories"
@@ -55,19 +71,20 @@ def search(query: str) -> list[dict]:
             f"{API}?q={quote_plus(query)}"
             f"&sort=stars&order=desc&per_page={PER_PAGE}&page={page}"
         )
-        req = Request(url, headers=headers())
-        try:
-            with urlopen(req, timeout=30) as resp:
-                data = json.loads(resp.read())
-        except HTTPError as e:
-            if e.code == 403:
-                # rate-limited; honor reset header if present, else back off
-                reset = e.headers.get("X-RateLimit-Reset")
-                wait = max(1, int(reset) - int(time.time())) if reset else 60
-                print(f"rate-limited, sleeping {wait}s", file=sys.stderr)
-                time.sleep(wait)
-                continue
-            raise
+        while True:
+            try:
+                with urlopen(Request(url, headers=headers()), timeout=30) as resp:
+                    data = json.loads(resp.read())
+                break
+            except HTTPError as e:
+                if e.code == 403:
+                    # rate-limited; honor reset header if present, else back off
+                    reset = e.headers.get("X-RateLimit-Reset")
+                    wait = max(1, int(reset) - int(time.time())) if reset else 60
+                    print(f"rate-limited, sleeping {wait}s", file=sys.stderr)
+                    time.sleep(wait)
+                    continue
+                raise
         batch = data.get("items", [])
         if not batch:
             break
